@@ -1,0 +1,19 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# build output and local runtime state
+/.next/
+/.vinext/
+/dist/
+/.wrangler/
+/.sites-runtime/
+/out/
+
+# local and generated files
+.env*
+next-env.d.ts
+*.pem
+*.log
+.DS_Store
