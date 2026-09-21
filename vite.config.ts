@@ -1,0 +1,49 @@
+import vinext from "vinext";
+import { defineConfig, type Plugin } from "vite";
+import { cp, mkdir, rm } from "node:fs/promises";
+import { resolve } from "node:path";
+import hostingConfig from "./.openai/hosting.json";
+
+function sitesBuildMetadata(): Plugin {
+  return {
+    name: "sites-build-metadata",
+    async closeBundle() {
+      const outputDirectory = resolve("dist", ".openai");
+      await rm(outputDirectory, { recursive: true, force: true });
+      await mkdir(outputDirectory, { recursive: true });
+      await cp(
+        resolve(".openai", "hosting.json"),
+        resolve(outputDirectory, "hosting.json"),
+      );
+    },
+  };
+}
+
+export default defineConfig(async () => {
+  process.env.CLOUDFLARE_CF_FETCH_ENABLED ??= "false";
+  process.env.WRANGLER_SEND_METRICS ??= "false";
+  process.env.WRANGLER_WRITE_LOGS ??= "false";
+  process.env.WRANGLER_LOG_PATH ??= ".wrangler/logs";
+  process.env.WRANGLER_REGISTRY_PATH ??= ".wrangler/dev-registry";
+  process.env.MINIFLARE_REGISTRY_PATH ??= ".wrangler/registry";
+
+  const { cloudflare } = await import("@cloudflare/vite-plugin");
+
+  return {
+    server: { host: "0.0.0.0", allowedHosts: ["terminal.local"] },
+    plugins: [
+      vinext(),
+      sitesBuildMetadata(),
+      cloudflare({
+        viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
+        inspectorPort: false,
+        config: {
+          main: "vinext/server/fetch-handler",
+          compatibility_flags: ["nodejs_compat"],
+          d1_databases: hostingConfig.d1 ? [] : [],
+          r2_buckets: hostingConfig.r2 ? [] : [],
+        },
+      }),
+    ],
+  };
+});
